@@ -1,0 +1,20 @@
+#!/usr/bin/bash
+
+# 14/Fev/2025
+#
+# This script is a wrapper to Timewarrior (https://timewarrior.net/) while
+# it doesn't have hooks.
+#
+# The purpose of it is to provide Timewarrior current tracking tags to a
+# Windows application that will insert an icon in the systray whenever
+# Timewarrior is tracking time.
+#
+# It was tested with timewarrior v1.6.
+#
+# Copy this file into ~/.local/bin/
+
+timew_original_prog=/usr/local/bin/timew
+timew_tags_file=/mnt/c/Users/cakira/.local/state/timewarrior/current_tags.txt
+
+$timew_original_prog "$@"
+$timew_original_prog | grep '^Tracking' | cut -d ' ' -f 2- > $timew_tags_file
