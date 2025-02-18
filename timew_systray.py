@@ -5,27 +5,39 @@
 # Requires infi.systray. Install it with `pip install infi.systray`
 # Monitors a file and creates a systray icon for Timewarrior.
 
+import shlex
 from pathlib import Path
-from time import sleep
 from threading import Event
+from time import sleep
+
 from infi.systray import SysTrayIcon
 
-MONITORED_FILE = Path(r"C:\Users\cakira\.local\state\timewarrior\current_tags.txt")
+MONITORED_FILE = Path(
+    r"C:\Users\cakira\.local\state\timewarrior\current_tags.txt")
 ICON_FOLDER = Path("icons")
 ICON_DEFAULT = ICON_FOLDER / "timewarrior.ico"
 ICON_EMPTY = ICON_FOLDER / "timewarrior_empty.ico"
 
 
 class TimewarriorSystray:
+
     def __init__(self):
         self.stop_event = Event()
-        self.systray_icon = SysTrayIcon(
-            str(ICON_DEFAULT), "uninitialized", on_quit=self._on_quit_callback
-        )
+        self.systray_icon = SysTrayIcon(str(ICON_DEFAULT),
+                                        "uninitialized",
+                                        on_quit=self._on_quit_callback)
 
     def _on_quit_callback(self, _systray):
         """Handles systray exit."""
         self.stop_event.set()
+
+    def find_icon_for_tags(self, tags):
+        """Finds an icon matching the first valid tag in the icons folder."""
+        for tag in tags:
+            icon_path = ICON_FOLDER / f"{tag}.ico"
+            if icon_path.exists():
+                return str(icon_path)
+        return str(ICON_DEFAULT if tags else ICON_EMPTY)
 
     def monitor_file(self):
         """Monitors the file and updates the systray icon."""
@@ -35,16 +47,16 @@ class TimewarriorSystray:
             while not self.stop_event.is_set():
                 try:
                     with MONITORED_FILE.open() as current_tags_file:
-                        tags = current_tags_file.readline().strip()
+                        tags = shlex.split(current_tags_file.readline().strip(
+                        ))  # Handle quoted tags
                 except FileNotFoundError:
-                    tags, icon = "None", ICON_EMPTY
+                    tags, icon = [], str(ICON_EMPTY)
                 else:
-                    icon = ICON_DEFAULT if tags else ICON_EMPTY
-                    tags = tags or "None"
+                    icon = self.find_icon_for_tags(tags)
 
-                new_state = (icon, tags)
+                new_state = (icon, " ".join(tags) if tags else "None")
                 if new_state != last_state:  # Update only if changed
-                    self.systray_icon.update(str(icon), tags)
+                    self.systray_icon.update(icon, new_state[1])
                     last_state = new_state
 
                 sleep(5)
